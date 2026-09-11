@@ -1,0 +1,24 @@
+{
+  "name": "shooter3d",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Browser-based multiplayer 3D team shooter",
+  "workspaces": [
+    "shared",
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev:client": "npm run dev -w client",
+    "dev:server": "npm run dev -w server",
+    "typecheck": "npm run typecheck -ws --if-present",
+    "test": "npm run test -w server",
+    "build:client": "npm run build -w client"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^25.10.0"
+  }
+}

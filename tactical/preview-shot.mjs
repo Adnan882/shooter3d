@@ -1,0 +1,11 @@
+import puppeteer from "puppeteer-core";
+const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+const b = await puppeteer.launch({ executablePath: CHROME, headless: "new", args: ["--enable-unsafe-swiftshader", "--use-gl=swiftshader"] });
+const p = await b.newPage();
+p.on("pageerror", (e) => console.log("[pageerror]", String(e.message).slice(0, 600)));
+await p.goto("http://localhost:3567/_preview.html", { waitUntil: "networkidle0" });
+await new Promise((r) => setTimeout(r, 3500));
+await p.screenshot({ path: "/tmp/models-preview.png" });
+console.log("shot saved");
+await b.close();
+process.exit(0);

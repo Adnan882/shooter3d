@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SHOOTER · TACTICAL</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 100vw; height: 100vh; overflow: hidden; background: #06090f; font-family: "Segoe UI", system-ui, sans-serif; color: #eef2f8; }
+      canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
+      #overlay { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
+
+      /* Crosshair — 4px dot, #00FF00, 1px black outline */
+      #crosshair { position: fixed; top: 50%; left: 50%; width: 4px; height: 4px; transform: translate(-50%, -50%); background: #00ff00; outline: 1px solid #000; box-shadow: 0 0 1px #000; z-index: 20; }
+
+      /* Bottom-left health / armor */
+      #hpwrap { position: fixed; left: 20px; bottom: 20px; width: 300px; }
+      #bars { position: relative; width: 300px; height: 20px; border: 1px solid rgba(255,255,255,.35); border-radius: 3px; overflow: hidden; }
+      #armorbar { position: absolute; inset: 0; background: #2f6bff; width: 100%; transition: width .12s; }
+      #healthbar { position: absolute; inset: 0; background: #25d366; width: 100%; transition: width .12s; }
+      #hpval { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; }
+
+      /* Bottom-right ammo */
+      #ammo { position: fixed; right: 24px; bottom: 18px; font-size: 34px; font-weight: 800; text-align: right; line-height: 1; }
+      #ammo small { font-size: 15px; color: #9aa7bd; display: block; margin-top: 4px; }
+
+      /* Scoreboard / killfeed */
+      #killfeed { position: fixed; top: 14px; right: 14px; display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+      #killfeed .kf { background: rgba(0,0,0,.55); padding: 4px 10px; font-size: 12px; border-radius: 3px; }
+
+      /* Damage vignette + hitmarker */
+      #vignette { position: fixed; inset: 0; box-shadow: inset 0 0 120px rgba(255,0,0,.55); opacity: 0; transition: opacity .12s; pointer-events: none; }
+      #hitmarker { position: fixed; top: 50%; left: 50%; width: 20px; height: 20px; transform: translate(-50%,-50%); opacity: 0; pointer-events: none; }
+
+      /* Ability bar */
+      #abilities { position: fixed; bottom: 84px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; }
+      .ability { width: 48px; height: 48px; border: 1px solid #3a465e; border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 800; position: relative; background: rgba(8,12,20,.7); }
+      .ability small { font-size: 9px; color: #9aa7bd; }
+      .ability .cd { position: absolute; inset: 0; background: rgba(0,0,0,.65); display: flex; align-items: center; justify-content: center; font-size: 13px; color: #fff; font-weight: 700; display: none; border-radius: 6px; }
+      .ability.ready .cd { display: none; }
+
+      /* Respawn / ready overlays */
+      #dmgtext { position: fixed; top: 44%; left: 50%; transform: translate(-50%,-50%); font-size: 40px; font-weight: 900; letter-spacing: 4px; color: #ff5252; display: none; text-shadow: 0 2px 6px #000; }
+      #connecting { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: #06090f; }
+      #connecting input { padding: 10px 14px; width: 240px; border-radius: 6px; border: 1px solid #3a465e; background: #0c1220; color: #eef2f8; font-size: 15px; text-align: center; outline: none; }
+      #connecting button { padding: 10px 26px; border: none; border-radius: 6px; background: #22d3ee; color: #04121a; font-weight: 800; cursor: pointer; }
+      .hint { color: #5b6a85; font-size: 13px; position: fixed; bottom: 6px; left: 50%; transform: translateX(-50%); }
+
+      /* Inventory modal (Tab) */
+      #inventory { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none; z-index: 30; align-items: center; justify-content: center; pointer-events: auto; }
+      #inventory.open { display: flex; }
+      .inv-panel { width: 860px; max-width: 96vw; background: #0c1422; border: 1px solid #2c3a52; border-radius: 10px; padding: 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+      .inv-col h3 { font-size: 12px; letter-spacing: 2px; color: #7d8aa3; margin-bottom: 10px; text-transform: uppercase; }
+      .inv-grid { display: grid; gap: 4px; }
+      .loot-grid { grid-template-columns: repeat(3, 1fr); }
+      .bag-grid { grid-template-columns: repeat(5, 1fr); }
+      .inv-cell { background: #131d33; border: 1px solid #22304a; border-radius: 4px; min-height: 62px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; text-align: center; padding: 4px; position: relative; cursor: pointer; }
+      .inv-cell.drag-over { border-color: #22d3ee; background: #1a2c4d; }
+      .inv-cell .dist { position: absolute; top: 2px; right: 4px; font-size: 9px; color: #7d8aa3; }
+      .inv-cell.taken { background: rgba(34,211,238,.06); }
+      .inv-cell[data-slot] { min-height: 84px; }
+      .inv-cell small { color: #7d8aa3; }
+    </style>
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+
+    <div id="overlay">
+      <div id="crosshair"></div>
+      <div id="hpwrap">
+        <div id="bars">
+          <div id="armorbar"></div>
+          <div id="healthbar"></div>
+          <div id="hpval">100 / 0</div>
+        </div>
+        <div class="hint">CLICK TO LOCK MOUSE · WASD MOVE · SHIFT SPRINT · CTRL CROUCH · SPACE JUMP · TAB INV · R RELOAD · Q/E/C/X ABILITIES</div>
+      </div>
+      <div id="ammo"><span id="clip">30</span> / <span id="reserve">90</span><small id="wpn">VX-7 RIFLE</small></div>
+      <div id="killfeed"></div>
+      <div id="vignette"></div>
+      <div id="hitmarker">
+        <svg viewBox="0 0 20 20" width="20" height="20">
+          <path d="M10 3v5M10 12v5M3 10h5M12 10h5" stroke="#fff" stroke-width="2" stroke-linecap="round" fill="none"/>
+        </svg>
+      </div>
+      <div id="abilities">
+        <div class="ability ready" id="ab-frag"><span>Q</span><small>FRAG</small><div class="cd">0</div></div>
+        <div class="ability ready" id="ab-smoke"><span>E</span><small>SMOKE</small><div class="cd">0</div></div>
+        <div class="ability ready" id="ab-stim"><span>C</span><small>STIM</small><div class="cd">0</div></div>
+        <div class="ability ready" id="ab-knife"><span>X</span><small>KNIFE</small><div class="cd">0</div></div>
+      </div>
+      <div id="dmgtext">YOU DIED</div>
+    </div>
+
+    <div id="connecting">
+      <h1 style="letter-spacing:4px;">SHOOTER · TACTICAL</h1>
+      <input id="name" maxlength="20" placeholder="Callsign" />
+      <button id="join">DEPLOY</button>
+    </div>
+
+    <div id="inventory">
+      <div class="inv-panel" id="inv-panel"></div>
+    </div>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "/vendor/three.js",
+          "three/addons/": "/vendor/",
+          "cannon-es": "/vendor/cannon-es.js",
+          "socket.io-client": "/vendor/socket.io-client.js"
+        }
+      }
+    </script>
+    <script type="module" src="main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,66 @@
+<!doctype html>
+<style>
+  body { margin: 0; background: #222; }
+  #g { width: 100vw; height: 100vh; }
+  label { position: fixed; color: #fff; font: 12px monospace; text-shadow: 0 0 3px #000; }
+</style>
+<script type="importmap">
+  {
+    "imports": {
+      "three": "/vendor/three.js",
+      "three/addons/": "/vendor/"
+    }
+  }
+</script>
+<script type="module">
+  import * as THREE from "three";
+  import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+
+  const models = ["character", "rifle", "sidearm", "blade"];
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x303540);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x334, 1.2));
+  const sun = new THREE.DirectionalLight(0xffffff, 1.5);
+  sun.position.set(3, 6, 5);
+  scene.add(sun);
+  const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 50);
+  camera.position.set(0, 2.2, 7);
+  camera.lookAt(0, 1, 0);
+  const grid = new THREE.GridHelper(20, 20, 0x666, 0x444);
+  grid.position.y = 0.001;
+  scene.add(grid);
+  const renderer = new THREE.WebGLRenderer();
+  renderer.setSize(innerWidth, innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  const loader = new GLTFLoader();
+  const gap = 2.4;
+  const startX = -1.5 * gap;
+  models.forEach((m, i) => {
+    const label = document.createElement("label");
+    label.textContent = m;
+    label.style.left = (startX + i * gap) * 55 + innerWidth / 2 + "px";
+    label.style.top = "12px";
+    document.body.appendChild(label);
+    loader.load(`/models/${m}.glb`, (gltf) => {
+      const root = gltf.scene;
+      const box = new THREE.Box3().setFromObject(root);
+      const size = box.getSize(new THREE.Vector3());
+      const max = Math.max(size.x, size.y, size.z);
+      const s = 1.8 / max;
+      root.scale.setScalar(s);
+      box.setFromObject(root);
+      const c = box.getCenter(new THREE.Vector3());
+      root.position.x = startX + i * gap - c.x * s ? startX + i * gap : 0;
+      // place so centerY sits at ~1m
+      root.position.set(startX + i * gap, 1.0 - c.y, 0);
+      scene.add(root);
+      if (gltf.animations?.length) {
+        const mixer = new THREE.AnimationMixer(root);
+        mixer.clipAction(gltf.animations[0]).play();
+        setInterval(() => mixer.update(0.03), 30);
+      }
+      renderer.render(scene, camera);
+    });
+  });
+</script>
