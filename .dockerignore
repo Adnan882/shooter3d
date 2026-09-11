@@ -1,0 +1,15 @@
+.git
+.gitignore
+node_modules
+**/node_modules
+**/dist
+tactical
+data
+*.log
+.env
+.env.*
+.DS_Store
+README.md
+3D MODELS
+scripts
+**/*.test.ts

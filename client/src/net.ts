@@ -1,7 +1,12 @@
 import type { AuthResponse, AuthUser } from "@shooter/shared";
 
-const SERVER = (import.meta as any).env?.VITE_SERVER_URL ?? "http://localhost:2567";
-const WS_URL = (import.meta as any).env?.VITE_WS_URL ?? "ws://localhost:2567";
+const env = (import.meta as any).env ?? {};
+const DEV = !!env.DEV;
+// In production the server serves this same origin, so target it automatically.
+const SERVER = env.VITE_SERVER_URL ?? (DEV ? "http://localhost:2567" : window.location.origin);
+const WS_URL =
+  env.VITE_WS_URL ??
+  (DEV ? "ws://localhost:2567" : `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}`);
 
 import { Client as ColyseusClient } from "colyseus.js";
 let _client: ColyseusClient | null = null;
