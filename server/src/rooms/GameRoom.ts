@@ -35,6 +35,7 @@ export class GameRoom extends Room<GameRoomState> {
   onCreate(options: { mid?: string; seats?: Record<string, Seat>; bots?: BotSeat[]; authz?: AuthService; mapId?: string }) {
     this.authz = options.authz!;
     this.mid = options.mid ?? "";
+    this.autoDispose = false; // bots don't hold connections — keep room alive until match ends
     for (const [uid, seat] of Object.entries(options.seats ?? {})) {
       this.seats.set(uid, seat);
     }
@@ -210,6 +211,8 @@ export class GameRoom extends Room<GameRoomState> {
       scoreB: this.state.scoreB,
       results,
     } satisfies MatchEndMessage);
+    // Allow clients time to read the scoreboard, then disconnect
+    setTimeout(() => this.disconnect(), 10_000);
   }
 
   private syncAll(now: number) {

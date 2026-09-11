@@ -31,7 +31,8 @@ async function joinMatch(d: JoinMatchData) {
       onEnd: (msg) => onMatchEnd(msg),
       onQuit: () => quitMatch(),
     });
-  } catch {
+  } catch (e: any) {
+    console.error("[joinMatch] failed:", e?.message ?? e, "| code:", e?.code, "| stack:", e?.stack);
     alert("Could not join the match (it may be full or already started).");
     void goParty(getPartyRoom()?.state.code ?? null, false);
   }
